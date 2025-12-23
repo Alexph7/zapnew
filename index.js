@@ -12,9 +12,16 @@ app.use(express.json());
 // ========================
 const TG_TOKEN = process.env.TG_TOKEN;
 const TG_CHAT_ID = process.env.TG_CHAT_ID;
+const WHAPI_CHANNEL_NAME = process.env.WHAPI_CHANNEL_NAME;
+
 
 if (!TG_TOKEN || !TG_CHAT_ID) {
   console.error("❌ Variáveis de ambiente não carregadas");
+  process.exit(1);
+}
+
+if (!WHAPI_CHANNEL_NAME) {
+  console.error("❌ WHAPI_CHANNEL_NAME não definido");
   process.exit(1);
 }
 
@@ -42,6 +49,11 @@ app.post("/webhook/messages", async (req, res) => {
     for (const msg of messages) {
       // ignora mensagens enviadas por você mesmo
       if (msg.from_me) continue;
+
+    // ignora qualquer coisa que NÃO seja o canal alvo
+    if (msg.chat_name !== WHAPI_CHANNEL_NAME) {
+      continue;
+    }
 
       if (msg.type === "text" && msg.text?.body) {
         const texto = msg.text.body;
