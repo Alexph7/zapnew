@@ -57,7 +57,12 @@ app.post("/webhook/messages", (req, res) => {
                 const matches = msg.text.body.match(REGEX_CODES);
                 if (!matches || matches.length === 0) continue;
 
-                enviarTelegram(matches.join("\n")); // <-- SEM await
+                const formatado = matches
+                    .map(c => `\`${c.toUpperCase()}\``)
+                    .join("\n");
+
+                enviarTelegram(formatado);
+
             }
         }
 
@@ -89,6 +94,7 @@ function enviarTelegram(texto) {
     const payload = {
         chat_id: TG_CHAT_ID,
         text: texto,
+        parse_mode: "MarkdownV2",
     };
 
     fetch(url, {
