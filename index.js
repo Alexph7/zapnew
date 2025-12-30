@@ -66,10 +66,24 @@ app.post("/webhook/messages", (req, res) => {
     }
 });
 
+function preAquecerTelegram() {
+    const url = `https://api.telegram.org/bot${TG_TOKEN}/sendChatAction`;
+
+    fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            chat_id: TG_CHAT_ID,
+            action: "typing"
+        }),
+        agent: httpsAgent,
+    }).catch(() => { });
+}
+
 // ========================
 // FUNÇÃO TELEGRAM
 // ========================
-async function enviarTelegram(texto) {
+function enviarTelegram(texto) {
     const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
 
     const payload = {
@@ -86,10 +100,6 @@ async function enviarTelegram(texto) {
         console.error("Erro Telegram:", err.message);
     });
 
-    if (!resp.ok) {
-        const erro = await resp.text();
-        console.error("Erro Telegram:", erro);
-    }
 }
 
 // ========================
@@ -98,4 +108,9 @@ async function enviarTelegram(texto) {
 const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`Node rodando na porta ${PORT}`);
+
+    // pré-aquece ao subir
+    preAquecerTelegram();
 });
+// mantém o caminho quente
+setInterval(preAquecerTelegram, 5 * 60 * 1000);
