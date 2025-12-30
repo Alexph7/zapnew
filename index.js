@@ -1,11 +1,18 @@
 import express from "express";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
+import https from "https";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+
+const httpsAgent = new https.Agent({
+    keepAlive: true,
+    maxSockets: 10,
+});
+
 // REGEX: códigos 8–10 chars, letras + números, sem símbolos
 const REGEX_CODES =
     /(?<=^|\s)(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{8,10}(?=\s|$)/gi;
@@ -32,42 +39,30 @@ app.get("/", (req, res) => {
 // ========================
 // WEBHOOK WHAPI
 // ========================
-app.post("/webhook/messages", async (req, res) => {
-    console.log("WEBHOOK RECEBIDO");
-    console.log("URL:", req.originalUrl);
-    console.log(JSON.stringify(req.body, null, 2));
-
+app.post("/webhook/messages", (req, res) => {
     try {
         const messages = req.body.messages;
         if (!Array.isArray(messages)) {
             return res.sendStatus(200);
         }
 
+        // RESPONDE IMEDIATAMENTE AO WHAPI
+        res.sendStatus(200);
+
+        // PROCESSA EM BACKGROUND
         for (const msg of messages) {
-            // ignora mensagens enviadas por você mesmo
             if (msg.from_me) continue;
 
             if (msg.type === "text" && msg.text?.body) {
-                const texto = msg.text.body;
+                const matches = msg.text.body.match(REGEX_CODES);
+                if (!matches || matches.length === 0) continue;
 
-                // aplica o regex
-                const matches = texto.match(REGEX_CODES);
-
-                // se não houver códigos válidos, ignora a mensagem
-                if (!matches || matches.length === 0) {
-                    continue;
-                }
-
-                // envia apenas os códigos encontrados
-                await enviarTelegram(matches.join("\n"));
-
+                enviarTelegram(matches.join("\n")); // <-- SEM await
             }
         }
 
-        res.sendStatus(200);
     } catch (err) {
-        console.error("Erro ao processar webhook:", err);
-        res.sendStatus(500);
+        console.error("Erro no webhook:", err);
     }
 });
 
@@ -82,10 +77,13 @@ async function enviarTelegram(texto) {
         text: texto,
     };
 
-    const resp = await fetch(url, {
+    fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        agent: httpsAgent,
+    }).catch(err => {
+        console.error("Erro Telegram:", err.message);
     });
 
     if (!resp.ok) {
