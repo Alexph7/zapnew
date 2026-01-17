@@ -36,6 +36,27 @@ app.get("/", (req, res) => {
     res.send("Webhook OK");
 });
 
+
+// ========================
+// FUNÇÃO DE EXTRAÇÃO DE TEXTO DE QUALQUER TIPO
+// ========================
+function extractText(msg) {
+    if (!msg || msg.from_me) return null;
+
+    switch (msg.type) {
+        case "link_preview":   // prioridade máxima
+            return msg.link_preview?.body?.trim() || null;
+        case "text":
+            return msg.text?.body?.trim() || null;
+        case "image":
+            return msg.image?.caption?.trim() || null;
+        case "video":   // inclui GIFs
+            return msg.video?.caption?.trim() || null;
+        default:
+            return null;
+    }
+}
+
 // ========================
 // WEBHOOK WHAPI
 // ========================
@@ -51,19 +72,27 @@ app.post("/webhook/messages", (req, res) => {
 
         // PROCESSA EM BACKGROUND
         for (const msg of messages) {
+            console.log("=== MENSAGEM RECEBIDA ===");
+            console.log(JSON.stringify(msg, null, 2));
+            console.log("=========================");
+
             if (msg.from_me) continue;
 
-            if (msg.type === "text" && msg.text?.body) {
-                const matches = msg.text.body.match(REGEX_CODES);
-                if (!matches || matches.length === 0) continue;
+            const texto = extractText(msg);
+            if (!texto) continue;
 
-                const formatado = matches
-                    .map(c => `\`${c.toUpperCase()}\``)
-                    .join("\n");
+            // REMOVE SÍMBOLOS DE FORMATAÇÃO DO WHATSAPP (*, _, ~)
+            const textoLimpo = texto.replace(/[*_~]/g, "");
 
-                enviarTelegram(formatado);
+            const matches = textoLimpo.match(REGEX_CODES);
+            if (!matches || matches.length === 0) continue;
 
-            }
+            const formatado = matches
+                .map(c => `\`${c.toUpperCase()}\``)
+                .join("\n");
+
+            enviarTelegram(formatado);
+
         }
 
     } catch (err) {
@@ -91,22 +120,20 @@ function preAquecerTelegram() {
 function enviarTelegram(texto) {
     const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
 
-    const payload = {
-        chat_id: TG_CHAT_ID,
-        text: texto,
-        parse_mode: "MarkdownV2",
-    };
-
     fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+            chat_id: TG_CHAT_ID,
+            text: texto,
+            parse_mode: "MarkdownV2",
+        }),
         agent: httpsAgent,
     }).catch(err => {
-        console.error("Erro Telegram:", err.message);
+        console.error("Erro Telegram:", err);
     });
-
 }
+
 
 // ========================
 // START SERVER
