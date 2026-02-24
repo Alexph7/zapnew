@@ -50,8 +50,10 @@ function extractText(msg) {
             return msg.text?.body?.trim() || null;
         case "image":
             return msg.image?.caption?.trim() || null;
-        case "video":   // inclui GIFs
+        case "video":
             return msg.video?.caption?.trim() || null;
+        case "gif":
+            return msg.gif?.caption?.trim() || null;
         default:
             return null;
     }
