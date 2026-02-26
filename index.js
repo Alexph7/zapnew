@@ -15,7 +15,7 @@ const httpsAgent = new https.Agent({
 
 // REGEX: códigos 8–10 chars, letras + números, sem símbolos
 const REGEX_CODES =
-    /(?<=^|\s)(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{8,10}(?=\s|$)/gi;
+    /(?<=^|\s)(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{8,16}(?=\s|$)/gi;
 
 
 // ========================
